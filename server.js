@@ -7,9 +7,10 @@ const addUserToViews = require('./middleware/addUserToViews');
 require('dotenv').config();
 require('./config/database');
 
+const isSignedIn = require('./middleware/isSignedIn');
 // Controllers
 const authController = require('./controllers/auth');
-const isSignedIn = require('./middleware/isSignedIn');
+const applicationController = require('./controllers/applications');
 
 const app = express();
 // Set the port from environment variable or default to 3000
@@ -22,7 +23,7 @@ app.use(express.urlencoded({ extended: false }));
 // Middleware for using HTTP verbs such as PUT or DELETE
 app.use(methodOverride('_method'));
 // Morgan for logging HTTP requests
-app.use(morgan('dev'));
+// app.use(morgan('dev'));
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
@@ -38,7 +39,14 @@ app.use(addUserToViews);
 
 // Public Routes
 app.get('/', async (req, res) => {
-  res.render('index.ejs');
+  if (req.session.user) {
+    console.log(req.session.user);
+    
+    return res.redirect(`users/${req.session.user._id}/applications`)
+  } else {
+    res.render('index.ejs');
+  }
+  // res.send('Hello index page')
 });
 
 app.use('/auth', authController);
@@ -46,14 +54,7 @@ app.use('/auth', authController);
 // Protected Routes
 app.use(isSignedIn);
 
-app.get('/protected', async (req, res) => {
-  if (req.session.user) {
-    res.send(`Welcome to the party ${req.session.user.username}.`);
-  } else {
-    res.sendStatus(404);
-    // res.send('Sorry, no guests allowed.');
-  }
-});
+app.use('/users/:userId/applications', applicationController);
 
 app.listen(port, () => {
   // eslint-disable-next-line no-console
